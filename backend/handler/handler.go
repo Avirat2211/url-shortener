@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/Avirat2211/url-shortener/shortener"
@@ -15,6 +16,7 @@ type UrlReq struct {
 
 func CreateShortUrl(c *gin.Context) {
 	var req UrlReq
+	fmt.Println("Generated")
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -30,6 +32,10 @@ func CreateShortUrl(c *gin.Context) {
 
 func HandleShortUrlRedirect(c *gin.Context) {
 	short := c.Param("shortUrl")
-	original := store.RetriveInitialUrl(short)
+	original, _, err := store.RetriveInitialUrl(short)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
 	c.Redirect(302, original)
 }
