@@ -1,4 +1,4 @@
-# Go Url Shortener
+# URL Shortener
 A URL shortener build with Go (Gin Framework) and Redis for the backend, along with a React+TypeScript frontend
 
 ## Features
