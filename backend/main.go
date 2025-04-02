@@ -52,6 +52,7 @@ func main() {
 	})
 
 	store.InitializeStore()
+	store.InitializeDb()
 
 	err = r.Run(":9808")
 	if err != nil {

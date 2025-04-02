@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/Avirat2211/url-shortener/shortener"
@@ -16,13 +15,18 @@ type UrlReq struct {
 
 func CreateShortUrl(c *gin.Context) {
 	var req UrlReq
-	fmt.Println("Generated")
+	// fmt.Println("Generated")
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	short := shortener.GenerateShortenUrl(req.LongUrl, req.UserId)
-	store.SaveUrlMapping(short, req.LongUrl, req.UserId)
+	var exists bool
+	var short string
+	exists, short = store.CheckExistenceOfUrl(req.LongUrl)
+	if !exists {
+		short = shortener.GenerateShortenUrl(req.LongUrl, req.UserId)
+		store.SaveUrlMapping(short, req.LongUrl, req.UserId)
+	}
 	host := "http://localhost:9808/"
 	c.JSON(200, gin.H{
 		"message":   "short url created successfully",

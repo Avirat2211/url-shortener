@@ -2,15 +2,22 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type StorageService struct {
 	redisClient *redis.Client
+	dbClient    *sql.DB
 }
 
 var (
@@ -26,10 +33,20 @@ type URLMapping struct {
 const cacheDuration = 6 * time.Hour
 
 func InitializeStore() *StorageService {
+	er := godotenv.Load()
+	if er != nil {
+		log.Println("Warning: No .env file found, using default values")
+		panic(er)
+	}
+	tempDB, errr := strconv.Atoi(os.Getenv("DB"))
+	if errr != nil {
+		log.Println("Warning: Invalid REDIS_DB value, defaulting to 0")
+		tempDB = 0
+	}
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
+		Addr:     os.Getenv("Addr"),
+		Password: os.Getenv("Password"),
+		DB:       tempDB,
 	})
 	pong, err := redisClient.Ping(ctx).Result()
 	if err != nil {
@@ -38,6 +55,54 @@ func InitializeStore() *StorageService {
 	fmt.Printf("\n Redis started successfully: pong message = {%s} ", pong)
 	storeService.redisClient = redisClient
 	return storeService
+}
+
+func InitializeDb() *sql.DB {
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Warning: No .env file found, using default values")
+		panic(err)
+	}
+	host := os.Getenv("host")
+	portStr := os.Getenv("port")
+	user := os.Getenv("user")
+	password := os.Getenv("password")
+	dbname := os.Getenv("dbname")
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		log.Println("Warning: Invalid DB_PORT value, defaulting to 5432")
+		port = 5432
+	}
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Ping()
+	if err != nil {
+		db.Close()
+		panic(err)
+	}
+	storeService.dbClient = db
+	fmt.Println("Successfully connected!")
+	return db
+}
+
+func CheckExistenceOfUrl(originalURL string) (bool, string) {
+	query := `SELECT short_url FROM urls WHERE long_url=$1 LIMIT 1`
+	var short string
+	err := storeService.dbClient.QueryRow(query, originalURL).Scan(&short)
+	if err == sql.ErrNoRows {
+		return false, ""
+	}
+	if err != nil {
+		log.Printf("Error checking URL existence: %v", err)
+		return false, ""
+	}
+	return true, short
 }
 
 func SaveUrlMapping(shortURL string, originalURL string, userId string) {
@@ -53,11 +118,46 @@ func SaveUrlMapping(shortURL string, originalURL string, userId string) {
 	if err != nil {
 		panic(fmt.Sprintf("Failed saving key url | Error: %v - shortURL: %s - originalURL: %s\n", err, shortURL, originalURL))
 	}
+
+	query := `INSERT INTO urls (short_url, long_url) VALUES ($1, $2) RETURNING id`
+	var id int
+	err = storeService.dbClient.QueryRow(query, shortURL, originalURL).Scan(&id)
+	if err != nil {
+		log.Printf("Failed to insert URL mapping into database | Error: %v", err)
+		return
+	}
+
+	fmt.Printf("URL successfully stored in PostgreSQL with ID: %d\n", id)
+}
+
+func RetriveInitialUrlFromPG(originalURL string) (bool, string) {
+	query := `SELECT long_url FROM urls WHERE short_url=$1 LIMIT 1`
+	var longURl string
+	err := storeService.dbClient.QueryRow(query, originalURL).Scan(&longURl)
+	if err == sql.ErrNoRows {
+		return false, ""
+	}
+	if err != nil {
+		log.Printf("Error checking URL existence: %v", err)
+		return false, ""
+	}
+	return true, longURl
 }
 
 func RetriveInitialUrl(shortURL string) (string, string, error) {
 	jsonData, err := storeService.redisClient.Get(ctx, shortURL).Result()
-	if err != nil {
+	if err == redis.Nil {
+		exist, longURL := RetriveInitialUrlFromPG(shortURL)
+		fmt.Println("Fetched from pg")
+		if !exist {
+			return "", "", fmt.Errorf("URL not found in cache and database: %s", shortURL)
+		} else {
+			data := URLMapping{OriginalURL: longURL, UserID: ""}
+			jsonData, _ := json.Marshal(data)
+			storeService.redisClient.Set(ctx, shortURL, jsonData, cacheDuration)
+		}
+		return longURL, "", nil
+	} else if err != nil {
 		return "", "", fmt.Errorf("failed retrieving url | Error: %v - shortURL: %s", err, shortURL)
 	}
 	var data URLMapping
