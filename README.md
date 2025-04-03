@@ -1,5 +1,5 @@
 # URL Shortener
-A URL shortener build with Go (Gin Framework) and Redis for the backend, along with a React+TypeScript frontend
+A URL shortener build with Go (Gin Framework), Redis and PostgreSQL for the backend, along with a React+TypeScript frontend
 
 ## Features
 - Shorten long URL's quickly
@@ -10,6 +10,7 @@ A URL shortener build with Go (Gin Framework) and Redis for the backend, along w
 ### Backend:
 - Go(Gin Framework)
 - Redis
+- PostgreSQL
 ### Frontend:
 - React
 - TypeScript
@@ -60,8 +61,16 @@ A URL shortener build with Go (Gin Framework) and Redis for the backend, along w
    
    Create .env file in backend with:
    ```env
-   ALLOWED_ORIGINS=http://localhost:5173
-   PORT=9808
+   ALLOWED_ORIGINS=
+   PORT= 
+   host     = 
+   port     = 
+   user     = 
+   password = 
+   dbname   = 
+   Addr=    
+   Password= 
+   DB=
    ```
 7. Run the server
    
