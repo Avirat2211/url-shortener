@@ -36,6 +36,7 @@ appendonly.aof
 # Environment files (for sensitive data)
 .env
 .env.local
+config.env
 
 store/store_service_test.go
 shortener/shorturl_generator_test.go

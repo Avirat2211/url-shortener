@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
@@ -33,21 +32,22 @@ type URLMapping struct {
 const cacheDuration = 6 * time.Hour
 
 func InitializeStore() *StorageService {
-	er := godotenv.Load()
-	if er != nil {
-		log.Println("Warning: No .env file found, using default values")
-		panic(er)
-	}
+	// er := godotenv.Load()
+	// if er != nil {
+	// 	log.Println("Warning: No .env file found, using default values")
+	// 	panic(er)
+	// }
 	tempDB, errr := strconv.Atoi(os.Getenv("DB"))
 	if errr != nil {
 		log.Println("Warning: Invalid REDIS_DB value, defaulting to 0")
 		tempDB = 0
 	}
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("Addr"),
+		Addr:     os.Getenv("REDIS_ADDR"),
 		Password: os.Getenv("Password"),
 		DB:       tempDB,
 	})
+	fmt.Println(redisClient.Options().Addr)
 	pong, err := redisClient.Ping(ctx).Result()
 	if err != nil {
 		panic(fmt.Sprintf("Error init Redis: %v", err))
@@ -58,33 +58,52 @@ func InitializeStore() *StorageService {
 }
 
 func InitializeDb() *sql.DB {
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Warning: No .env file found, using default values")
-		panic(err)
-	}
-	host := os.Getenv("host")
-	portStr := os.Getenv("port")
-	user := os.Getenv("user")
-	password := os.Getenv("password")
-	dbname := os.Getenv("dbname")
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		log.Println("Warning: Invalid DB_PORT value, defaulting to 5432")
-		port = 5432
-	}
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+	// err := godotenv.Load()
+	// if err != nil {
+	// 	log.Println("Warning: No .env file found, using default values")
+	// 	panic(err)
+	// }
+
+	// host := os.Getenv("host")
+	// portStr := os.Getenv("port")
+	// user := os.Getenv("user")
+	// password := os.Getenv("password")
+	// dbname := os.Getenv("dbname")
+
+	host := os.Getenv("POSTGRES_HOST")
+	port := os.Getenv("POSTGRES_PORT")
+	user := os.Getenv("POSTGRES_USER")
+	password := os.Getenv("POSTGRES_PASSWORD")
+	dbname := os.Getenv("POSTGRES_DB")
+
+	// port, err := strconv.Atoi(portStr)
+	// if err != nil {
+	// 	log.Println("Warning: Invalid DB_PORT value, defaulting to 5432")
+	// 	port = 5433
+	// }
+	fmt.Println(port)
+	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
 		panic(err)
 	}
-
+	fmt.Println(db.Stats())
 	err = db.Ping()
 	if err != nil {
 		db.Close()
 		panic(err)
+	}
+	createTableQuery := `
+	CREATE TABLE IF NOT EXISTS urls (
+		id SERIAL PRIMARY KEY,
+		short_url VARCHAR(255) UNIQUE NOT NULL,
+		long_url TEXT NOT NULL
+	);`
+	_, err = db.Exec(createTableQuery)
+	if err != nil {
+		panic(fmt.Sprintf("Error creating table: %v", err))
 	}
 	storeService.dbClient = db
 	fmt.Println("Successfully connected!")
