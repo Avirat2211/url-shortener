@@ -49,15 +49,8 @@ A URL shortener build with Go (Gin Framework), Redis and PostgreSQL for the back
    cd url-shortener
    ```
 ### Backend Setup
-1. Install Go and Redis
-   
-3. Install Dependencies:
-   
-   ```bash
-   cd backend/
-   go mod tidy
-   ```
-5. Setup .env file
+0. Ensure you have Docker and Docker compose installed
+1. Setup .env file
    
    Create .env file in backend with:
    ```env
@@ -73,11 +66,17 @@ A URL shortener build with Go (Gin Framework), Redis and PostgreSQL for the back
    Addr= //redis:6379
    DB=
    ```
-7. Run the server
-   
-    ```zsh
-    go run main.go
-    ```
+2. Build and Run the containers
+
+   Use Docker Compose to start the services:
+   ```bash
+   docker-compose up --build
+   ```
+
+   To stop the container:
+   ```bash
+   docker-compose down
+   ```
 
 ### Frontend Setup
 1. Navigate to frontend Directory
