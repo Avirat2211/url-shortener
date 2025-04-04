@@ -54,17 +54,17 @@ A URL shortener build with Go (Gin Framework), Redis and PostgreSQL for the back
    
    Create .env file in backend with:
    ```env
-   ALLOWED_ORIGINS= //for cors
-   PORT= // 9808
-   POSTGRES_HOST= //postgres
-   POSTGRES_PORT= // 5432
-   POSRGRES_USER= //postgres
-   POSTGRES_PASSWORD=
-   POSTGRES_DB=
-   REDIS_PORT= //6379
-   REDIS_HOST= //redis
-   Addr= //redis:6379
-   DB=
+   ALLOWED_ORIGINS=http://localhost:5173 
+   PORT=9808
+   POSTGRES_HOST=postgres
+   POSTGRES_PORT=5432
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=securepassword
+   POSTGRES_DB=mydb
+   REDIS_PORT=6379
+   REDIS_HOST=redis
+   Addr=redis:6379
+   DB=0
    ```
 2. Build and Run the containers
 
